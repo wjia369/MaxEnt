@@ -10,7 +10,6 @@ library(ENMeval)
 #install_version("maptools", "0.9-5")
 
 
-
 #=== Data preparation ====
 # import environmental data
 path <- file.path(system.file(package="dismo"), 'ex')
@@ -27,13 +26,12 @@ bradypus <- read.table(file,  header=TRUE,  sep=',')
 bradypus  <- bradypus[,-1]
 
 
-
 #=== ENMevaluation ====
 bg <- dismo::randomPoints(predictors[[1]], n = 10000) %>% as.data.frame()
 
 colnames(bg) <- colnames(bradypus)
 
-enmeval_results <- ENMeval::ENMevaluate(occs = bradypus, envs = predictors, bg = bg, 
+enmeval_results <- ENMeval::ENMevaluate(occs = bradypus, envs = predictors, bg = bg,
                                         tune.args = list(fc = c("L","LQ","H", "LQH", "LQHP", "LQHPT"), rm = 1:5),
                                         partitions = "randomkfold", partition.settings = list(kfolds = 2), 
                                         algorithm = "maxnet")
@@ -50,10 +48,6 @@ set.seed(0)
 group <- kfold(bradypus, 5)
 pres_train <- bradypus[group != 1, ]
 pres_test <- bradypus[group == 1, ]
-
-set.seed(10)
-pred_nf <- dropLayer(predictors, 'biome')
-backg <- randomPoints(pred_nf, n=1000, extf = 1.25)
 
 # maxent ready?
 maxent()
@@ -90,7 +84,7 @@ args_list
 
 # maxent
 xm <- maxent(x=predictors, p=pres_train, a=NULL, removeDuplicates=TRUE, nbg=10000,
-             factors='biome', path=WD, args=args_list)
+             factors='biome', path=WD, args=args_list) # 'a' means absence data, argument 'nbg' is only working when 'a=NULL'
 
 # check the results
 plot(xm)
