@@ -8,7 +8,7 @@ sf_use_s2(FALSE) # disable the use of s2 library for spatial indexing
 library(tidyverse)
 
 # set the GBIF account
-options(gbif_user = "wjia", gbif_pwd = "XXX", gbif_email = "weihan.jia@awi.de")
+options(gbif_user = "XXX", gbif_pwd = "XXX", gbif_email = "XXX")
 
 wd <- "E:/AWI/glacial_refugia_project/Framework/ArcticSDM_Simeon/gbif/"
 
