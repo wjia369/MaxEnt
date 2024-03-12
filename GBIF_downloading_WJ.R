@@ -89,7 +89,7 @@ for(i in 1:nrow(bbox_grid)) { # for each grid in 'bbox_grid'
       
     } else {
       
-      inPoly <- tibble(error = TRUE) # still create a dataframe is errors occur
+      inPoly <- tibble(error = TRUE) # still create a dataframe if errors occur
       
       write_csv(inPoly, 
                 file = glue::glue("{save_dir}all/{bbox_grid[i,] %>% pull('grid_id')}_gbif_all.csv"))
