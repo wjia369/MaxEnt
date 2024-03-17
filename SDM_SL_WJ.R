@@ -72,8 +72,7 @@ ggplot() +
 # read the GBIF data files
 gbif_list <- tibble(fls = list.files(glue::glue("{wd}data/Plantea"))) %>% # list all files in the directory
   mutate(ids = as.numeric(gsub("_gbif_plantea.csv", "", fls)))            # add a new list named 'ids' to the tibble
-                                                                          # replace the name of "_gbif_plantea.csv" with an empty string "" 
-                                                                          # in each element of 'fls'
+                                                                          # replace the name of "_gbif_plantea.csv" with an empty string "" in each element of 'fls'
                                                                           # this extracts the number in the file name
 
 # GBIF cleaning ------------------------
@@ -95,7 +94,7 @@ gbifTab <- lapply(which(gbif_list$ids %in% ids), # lapply() is a function used f
     
     # cleaning steps
     dplyr::filter(!is.na(decimalLongitude), !is.na(decimalLatitude), !is.na(species), basisOfRecord != "FOSSIL_SPECIMEN",
-                  coordinateUncertaintyInMeters / 1000 <= 1 | is.na(coordinateUncertaintyInMeters), year >= 1970) %>%
+                  coordinateUncertaintyInMeters / 1000 <= 5 | is.na(coordinateUncertaintyInMeters), year >= 1970) %>%
     
     # remove duplicate coordinates
     dplyr::distinct(decimalLongitude, decimalLatitude)
