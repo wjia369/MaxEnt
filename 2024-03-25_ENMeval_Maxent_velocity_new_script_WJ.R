@@ -1,4 +1,4 @@
-# Latest version of MaxEnt
+# Latest version of MaxEnt and velocity
 # Modified by Weihan Jia on 02-04-2024
 # 'mod' is the RasterStack of environmental variables
 # 'occ_coordinates' is a dataframe for the coordinates of presence points
