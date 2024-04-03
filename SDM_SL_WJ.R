@@ -38,16 +38,6 @@ ggplot() +
 map <- map_wrld %>% filter(name=="Alaska") %>% 
   st_transform(proj)
 
-# set the resolution
-res <- 5000
-
-# rasterize the map
-grd_map <- st_rasterize(map, st_as_stars(st_bbox(map),  # st_as_stars(): convert various spatial objects into stars objects,
-                                                        # which are a special type of data structure used for representing raster data
-                                                        # st_bbox(): extract the bounding box of the map
-                                    dx = res, dy = res, # specify the resolution of the raster grid in the x and y directions
-                                    values = NA_real_)) %>% # all cells should be initialized with NA
-  setNames("grd_map") # sets the name of the raster as 'grd_map'
 
 
 # GBIF occurrence data #
@@ -78,7 +68,7 @@ gbif_list <- tibble(fls = list.files(glue::glue("{wd}data/Plantea"))) %>% # list
 # GBIF cleaning ------------------------
 # Suggested by Weihan
 
-gbifTab <- lapply(which(gbif_list$ids %in% ids), # lapply() is a function used for parallel processing in R
+gbifTab <- parallel::mclapply(which(gbif_list$ids %in% ids), # lapply() is a function used for parallel processing in R
                                                  # check if 'ids' in 'gbif_list' are present in 'ids' (grids)
 
   function(x) {
@@ -99,15 +89,94 @@ gbifTab <- lapply(which(gbif_list$ids %in% ids), # lapply() is a function used f
     # remove duplicate coordinates
     dplyr::distinct(decimalLongitude, decimalLatitude)
 
-  }) %>%
+  }, mc.cores = 1) %>%
   
   # combine the results obtained from parallel processing into a single data frame
-  dplyr::bind_rows() %>% 
+  Reduce("rbind",.) %>% 
   
   # convert the combined results into a spatial object, projection is WGS1984
   sf::st_as_sf(coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326) %>% 
   
   # transform the coordinate system of data to match that of 'map'
   sf::st_transform(st_crs(map))
+
+
+# GBIF thinning #
+# set the resolution
+res <- 15000
+
+# rasterize the map
+grd_map <- st_rasterize(map, st_as_stars(st_bbox(map),  # st_as_stars(): convert various spatial objects into stars objects,
+                                                        # which are a special type of data structure used for representing raster data
+                                                        # st_bbox(): extract the bounding box of the map
+                                    dx = res, dy = res, # specify the resolution of the raster grid in the x and y directions
+                                    values = NA_real_)) %>% # all cells should be initialized with NA
+  setNames("grd_map") # sets the name of the raster as 'grd_map'
+
+
+# GBIF thinning ------------------------
+# Suggested by Simeon
+gbif_thin <- (gbifTab %>% group_split(species))[sapply(gbifTab %>% group_split(species), nrow)>50] %>% # split 'gbifTab' by species
+                                                            # keeping only species which the number of rows is greater than 50
+                                                            # this means that only species with more than 50 occurrences are included.
+  parallel::mclapply(
+    
+    function(x) {
+      out <- x %>% 
+        
+        # selects the column 'species'
+        dplyr::select(species) %>% 
+        
+        # transform the coordinate system of data to match that of 'thin_map'
+        st_transform(st_crs(thin_map)) %>%
+      
+        # mutate() - add a new column called 'cell'
+        # st_intersects() - check which features in gbifTab (.) intersect with features in 'thin_map' 
+        mutate(cell = unlist(apply(st_intersects(., thin_map %>% # unlist() - convert the output of apply() from a list to a vector
+                                                   st_as_sf(), # convert 'thin_map' to a stars object
+                                                 sparse = FALSE), 1, # output the result as a dense matrix instead of a sparse one
+                                                                     # 1 means the function should be applied over the rows of the input matrix
+                                   # for each row, check if there is any intersection with 'thin_map'
+                                   # if yes, return the indices (which(y)), if no, return NA
+                                   function(y) ifelse(any(y), which(y), NA)))) %>%
+      filter(!is.na(cell)) # remove 'cell' is NA
+    
+    # if the number of rows of 'out' > 1
+    if(nrow(out)>1) {out %>% 
+        
+        # split 'out' by species
+        group_split(cell) %>% 
+        
+        # apply a function
+        lapply(function(z) z %>% 
+                 # sample() - generate a random number between 1 and the number of rows in 'z'
+                 # slice() - choose the row corresponding to this random number
+                 slice(sample(1:nrow(z), 1))) %>%
+        
+        # combine the results into a single data frame
+        Reduce("rbind", .) %>% 
+
+        # select cell and species
+        dplyr::select(cell, species) %>% 
+        
+        # suppress the warning messages
+        suppressWarnings()
+
+      # or return NULL
+    } else NULL
+      
+  }, mc.cores = 1) %>% 
   
+  Reduce("rbind", .)
+
+
+
+
+
+
+
+
+
+
+
 
