@@ -170,7 +170,68 @@ gbif_thin <- (gbifTab %>% group_split(species))[sapply(gbifTab %>% group_split(s
   Reduce("rbind", .)
 
 
+#-------------------------------------------------------------------
+# 04-04-2024
+# Create pseudoabsence points #
+# Written by Ronja
+# Edited by Weihan
 
+# Step 1: Create the buffer #
+
+# create a buffer of 200 km 
+presence_buffer <- st_buffer(presence_sf, dist = 20000)
+
+# calculate the intersection of absence_sf and presence_buffer
+intersection_200 <- st_intersection(absence_sf, presence_buffer) %>% suppressWarnings()
+
+# only select unique points
+buffer_200_abs <- intersection_200[!duplicated(st_coordinates(intersection_200)), ]
+
+# create a new data tab
+modTab_buffer_200 <- occID %>% mutate(p = 1) %>% dplyr::select(p) %>% st_drop_geometry() %>%
+  bind_cols(subsetList$env[occID$id,]) %>%
+  bind_rows(buffer_200_abs %>% mutate(p = 0) %>% dplyr::select(p) %>% st_drop_geometry() %>%
+              bind_cols(subsetList$env[buffer_200_abs$id,])) %>% na.omit()
+
+# select presence points
+modTab_buffer_200_pres = subset(modTab_buffer_200, modTab_buffer_200$p ==1)
+
+
+# Step 2: Environmental profiling of background #
+
+library(e1071)
+
+# train a one-class SVM mode with 'modTab_buffer_200'
+mod <- svm(modTab_buffer_200[,-1], modTab_buffer_200[,1], type = "one-classification")
+
+# choose the data in modTab_buffer_200
+backg <- modTab_buffer_200 %>% 
+  
+  # if p==0 and the predictions from the SVM model being 0 at the same time
+  filter(p==0 & predict(mod)==0) %>% 
+  
+  # then select all columns except for the column 'p'
+  dplyr::select(-p)
+
+
+# Step 3: K-means clustering #
+
+km <- kmeans(backg, nrow(backg)-1)
+
+# create a new tab for model
+modelTab <- km$centers %>% # choose 'centers' in 'km'
+  
+  # convert it to a dataframe
+  as_tibble() %>% 
+  
+  # create a new column 'p' and place it before all columns
+  mutate(p = 0, .before = names(.)[1]) %>% 
+  
+  # bind all rows of presence points
+  bind_rows(modTab_buffer_200_pres) %>% 
+  
+  # ignore NA
+  na.omit()
 
 
 
