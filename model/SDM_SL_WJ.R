@@ -85,9 +85,6 @@ gbifTab <- parallel::mclapply(which(gbif_list$ids %in% ids), # lapply() is a fun
     # cleaning steps
     dplyr::filter(!is.na(decimalLongitude), !is.na(decimalLatitude), !is.na(species), basisOfRecord != "FOSSIL_SPECIMEN",
                   coordinateUncertaintyInMeters / 1000 <= 5 | is.na(coordinateUncertaintyInMeters), year >= 1970) %>%
-    
-    # remove duplicate coordinates
-    dplyr::distinct(decimalLongitude, decimalLatitude)
 
   }, mc.cores = 1) %>%
   
@@ -116,7 +113,7 @@ grd_map <- st_rasterize(map, st_as_stars(st_bbox(map),  # st_as_stars(): convert
 
 # GBIF thinning ------------------------
 # Suggested by Simeon
-gbif_thin <- (gbifTab %>% group_split(species))[sapply(gbifTab %>% group_split(species), nrow)>50] %>% # split 'gbifTab' by species
+gbif_thin <- (gbifTab %>% group_split(species))[sapply(gbifTab %>% group_split(species), nrow)>10] %>% # split 'gbifTab' by species
                                                             # keeping only species which the number of rows is greater than 50
                                                             # this means that only species with more than 50 occurrences are included.
   parallel::mclapply(
