@@ -101,10 +101,7 @@ for(i in seq_along(times[-length(times)])) {
   velocity <- ifel(diffRast==0, 0, ifel(diffRast==1, distRast, NA))
   velocity[is.na(map_maxent1_bina)] <- NA
   
-  # velocity[velocity==0] <- NA
-  # velocity <- velocity / tt
-  
-  ### cost layer
+  ### dispersal cost layer
   cost    <- mean((1 - map_maxent1), (1 - map_maxent2))
 
   ########################
